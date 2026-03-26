@@ -3,12 +3,10 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import pandas as pd
 import os
 
-# Token de tu bot (Render lo lee de las variables de entorno)
 TOKEN = os.environ.get('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(TOKEN)
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1zGZF5meVfgRZvRLSvKGelwYs2h3pgA7YEpC_1xj9cTk/export?format=csv"
-
 user_state = {}
 
 def get_data():
@@ -39,7 +37,7 @@ def handle_location(call):
     df = get_data()
     
     if df.empty:
-        bot.send_message(call.message.chat.id, "Error de conexión con la base de datos. Intenta nuevamente más tarde.")
+        bot.send_message(call.message.chat.id, "Error de conexión con la base de datos.")
         return
 
     df_ar = df[df['Pais (ISO)'] == 'AR']
@@ -54,31 +52,28 @@ def handle_location(call):
         resp = "🇦🇷 **Oportunidades del Día** 🇦🇷\n\n"
         for _, row in oportunidades.iterrows():
             resp += f"🔹 [{row['Producto o Sección']}]({row['Link']})\n"
-        resp += "\n¿Qué estás buscando hoy? (Escribí tu consulta)"
-        
+        resp += "\n¿Qué estás buscando hoy?"
     elif loc == 'CL':
         scope = pd.concat([df_cl, df_global])
         random_items = scope.sample(n=min(5, len(scope)))
         resp = "🇨🇱 **Te podría interesar** 🇨🇱\n\n"
         for _, row in random_items.iterrows():
             resp += f"🔹 [{row['Producto o Sección']}]({row['Link']})\n"
-        resp += "\n¿Qué estás buscando? (Escribe tu consulta)"
-
+        resp += "\n¿Qué estás buscando?"
     elif loc == 'UY':
         scope = pd.concat([df_uy, df_global])
         random_items = scope.sample(n=min(3, len(scope)))
         resp = "🇺🇾 **Productos Destacados** 🇺🇾\n\n"
         for _, row in random_items.iterrows():
             resp += f"🔹 [{row['Producto o Sección']}]({row['Link']})\n"
-        resp += "\n¿Qué andás buscando, bo? (Escribí tu consulta)"
-
+        resp += "\n¿Qué andás buscando, bo?"
     elif loc == 'GLOBAL':
         scope = df_global
         random_items = scope.sample(n=min(3, len(scope)))
-        resp = "🌍 **Top Picks / Mejores Opciones** 🌍\n\n"
+        resp = "🌍 **Mejores Opciones** 🌍\n\n"
         for _, row in random_items.iterrows():
             resp += f"🔹 [{row['Producto o Sección']}]({row['Link']})\n"
-        resp += "\n¿Qué buscas? / What are you looking for?"
+        resp += "\n¿Qué buscas?"
 
     bot.send_message(call.message.chat.id, resp, parse_mode='Markdown', disable_web_page_preview=True)
 
@@ -111,19 +106,17 @@ def handle_search(message):
         keywords_str = str(row['Keywords'])
         keywords = [k.strip().lower() for k in keywords_str.split(',')]
         query_words = query.split()
-        score = sum(1 for q in query_words if any(q in k for k in keywords))
-        return score
+        return sum(1 for q in query_words if any(q in k for k in keywords))
 
     scope['score'] = scope.apply(match_score, axis=1)
     matches = scope[scope['score'] > 0].sort_values(by='score', ascending=False)
     
     if matches.empty:
-        bot.send_message(chat_id, "No encontré resultados exactos. Intenta con otras palabras o navegá por los enlaces anteriores.")
+        bot.send_message(chat_id, "No encontré resultados exactos. Intenta con otras palabras.")
         return
         
     top_matches = matches.head(5)
-    
-    resp = "🔍 **Aquí tienes los resultados y sugerencias relacionadas:**\n\n"
+    resp = "🔍 **Aquí tienes los resultados:**\n\n"
     for _, row in top_matches.iterrows():
         resp += f"✅ [{row['Producto o Sección']}]({row['Link']})\n"
         
